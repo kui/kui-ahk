@@ -1,7 +1,7 @@
 ; Config
 SetTitleMatchMode, RegEx
 
-DebugMode = True
+;DebugMode = True
 
 Ignored := [ "ahk_exe \\Code\.exe$"
             ,"ahk_exe \\ConEmu64\.exe$"
