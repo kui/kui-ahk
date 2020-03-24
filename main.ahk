@@ -63,4 +63,3 @@ F5::
 ;;
 #If Not WinActive("ahk_group Ignored")
 #Include, generic.ahk
-^1::MsgBox, Foo
