@@ -47,9 +47,7 @@ ImeSet(SetSts, WinTitle="A")    {
 
 ;;
 #If DebugMode
-F5::
-    Reload
-    Return
+F5::Reload
 
 ;;
 #If WinActive("ahk_group Browser")

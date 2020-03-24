@@ -13,7 +13,7 @@ DisableCSpace() {
 }
 EnableCX() {
     global IsCX = True
-    ToolTip, Ctrl + Space,,, 11
+    ToolTip, Ctrl + X,,, 11
 }
 DisableCX() {
     global IsCX = False
@@ -66,6 +66,31 @@ EditText(Keys) {
 !k::
     Send, ^w
     DisableCSpace()
+    Return
+
+^c::
+    If (IsCX) {
+        WinClose, A
+        DisableCX()
+    } Else {
+        Send, ^c
+    }
+    Return
+k::
+    If (IsCX) {
+        Send, ^w
+        DisableCX()
+    } Else {
+        Send, k
+    }
+    Return
+h::
+    If (IsCX) {
+        Send, ^a
+        DisableCX()
+    } Else {
+        Send, h
+    }
     Return
 
 ^[::
