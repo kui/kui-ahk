@@ -11,11 +11,6 @@ Ignored := [ "ahk_exe \\Code\.exe$"
 Browser := [ "ahk_exe \\Explorer\.EXE$"
             ,"ahk_exe \\chrome\.exe$"]
 
-;GroupAdd, Ignored, ahk_exe \\Code\.exe$
-;GroupAdd, Ignroed, ahk_exe \\ConEmu64\.exe$
-;GroupAdd, Ignored, ahk_exe \\steamapps\\
-;GroupAdd, Ignored, ahk_exe \\Minecraft\\.*\\javaw.exe$
-
 ; Mapping impls
 #InstallKeybdHook
 #UseHook
