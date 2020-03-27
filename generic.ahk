@@ -114,3 +114,10 @@ h::
 
 ^Space::EnableCSpace()
 ^x::EnableCX()
+
+Alt::
+    KeyWait, Alt
+    Return
+LAlt Up::
+    Send, {AltUp}
+    Return

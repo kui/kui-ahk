@@ -11,7 +11,8 @@ Ignored := [ "ahk_exe \\Code\.exe$"
 Browser := [ "ahk_exe \\Explorer\.EXE$"
             ,"ahk_exe \\chrome\.exe$"]
 
-; Mapping impls
+; /Config
+
 #InstallKeybdHook
 #UseHook
 
