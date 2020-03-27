@@ -99,12 +99,17 @@ h::
     Return
 ^g::
     HasAnyOperation = False
-    If (IsCSpace)
+    If (IsCSpace) {
         DisableCSpace()
-    If (IsCX)
+        HasAnyOperation = True
+    }
+    If (IsCX) {
         DisableCX()
-    If (Not HasAnyOperation)
+        HasAnyOperation = True
+    }
+    If (Not HasAnyOperation) {
         Send, {Esc}
+    }
     Return
 
 ^Space::EnableCSpace()
