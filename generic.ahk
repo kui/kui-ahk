@@ -44,8 +44,8 @@ EditText(Keys) {
 ^a::MoveCarret("{Home}")
 ^v::MoveCarret("{PgDn}")
 !v::MoveCarret("{PgUp}")
-!f::MoveCarret("!{Right}")
-!b::MoveCarret("!{Left}")
+!f::MoveCarret("^{Right}")
+!b::MoveCarret("^{Left}")
 
 ^y::EditText("^v")
 ^w::EditText("^x")
