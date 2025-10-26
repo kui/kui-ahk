@@ -1,5 +1,5 @@
-![::Send, !{Left}
-!]::Send, !{Right}
+![::Send("!{Left}")
+!]::Send("!{Right}")
 
-!+,::Send, {Home}
-!+.::Send, {End}
+!+,::Send("{Home}")
+!+.::Send("{End}")

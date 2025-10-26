@@ -1,59 +1,49 @@
 ; Config
-SetTitleMatchMode, RegEx
+SetTitleMatchMode "RegEx"
 
-; DebugMode = True
+DebugMode := True
 
-Ignored := [ "ahk_exe \\Code\.exe$"
-            ,"ahk_exe \\ConEmu64\.exe$"
-            ,"ahk_exe \\steamapps\\"
-            ,"ahk_exe \\Minecraft\\.*\\javaw.exe$"]
+Ignored := ["ahk_exe \\Code\.exe$", "ahk_exe \\ConEmu64\.exe$", "ahk_exe \\steamapps\\",
+    "ahk_exe \\Minecraft\\.*\\javaw\.exe$"]
 
-Browser := [ "ahk_exe \\Explorer\.EXE$"
-            ,"ahk_exe \\chrome\.exe$"]
+Browser := ["ahk_exe \\Explorer\.EXE$", "ahk_exe \\chrome\.exe$", "ahk_exe \\firefox\.exe$",
+    "ahk_exe \\msedge\.exe$"]
 
 ; /Config
 
-#InstallKeybdHook
-#UseHook
+SetKeyDelay(0)
 
-For, Index, Element in Ignored
-    GroupAdd, Ignored, % Element
-For, Index, Element in Browser
-    GroupAdd, Browser, % Element
-
-SetKeyDelay 0
-
-; From https://github.com/karakaram/alt-ime-ahk/blob/master/IME.ahk
-ImeSet(SetSts, WinTitle="A")    {
-    ControlGet,hwnd,HWND,,,%WinTitle%
-    if    (WinActive(WinTitle))    {
-        ptrSize := !A_PtrSize ? 4 : A_PtrSize
-        VarSetCapacity(stGTI, cbSize:=4+4+(PtrSize*6)+16, 0)
-        NumPut(cbSize, stGTI,  0, "UInt")   ;    DWORD   cbSize;
-        hwnd := DllCall("GetGUIThreadInfo", Uint,0, Uint,&stGTI)
-                 ? NumGet(stGTI,8+PtrSize,"UInt") : hwnd
+ImeSet(SetSts, WinTitle := "A") {
+    hwnd := WinExist(WinTitle)
+    if WinActive(WinTitle) {
+        ptrSize := A_PtrSize ? A_PtrSize : 4
+        cbSize := 4 + 4 + (ptrSize * 6) + 16
+        stGTI := Buffer(cbSize, 0)
+        NumPut("uint", cbSize, stGTI.Ptr, 0)
+        hwnd := DllCall("GetGUIThreadInfo", "UInt", 0, "UInt", stGTI.Ptr)
+            ? NumGet(stGTI.Ptr, 8 + ptrSize, "UInt") : hwnd
     }
 
     return DllCall("SendMessage"
-          , UInt, DllCall("imm32\ImmGetDefaultIMEWnd", Uint,hwnd)
-          , UInt, 0x0283  ;Message : WM_IME_CONTROL
-          ,  Int, 0x006   ;wParam  : IMC_SETOPENSTATUS
-          ,  Int, SetSts) ;lParam  : 0 or 1
+        , "UInt", DllCall("imm32\ImmGetDefaultIMEWnd", "UInt", hwnd)
+        , "UInt", 0x0283 ;Message : WM_IME_CONTROL
+        , "Int", 0x006   ;wParam  : IMC_SETOPENSTATUS
+        , "Int", SetSts) ;lParam  : 0 or 1
 }
 
-^q::Suspend, Toggle
-^j::Send, {vkF3sc029}
-!j::ImeSet(False)
-+!j::ImeSet(True)
+^q:: Suspend(-1)
+!j:: ImeSet(0)
++!j:: ImeSet(1)
 
-;;
-#If DebugMode
-F5::Reload
+#HotIf DebugMode
+F5:: Reload
 
-;;
-#If WinActive("ahk_group Browser")
-#Include, browser.ahk
+for Element in Browser
+    GroupAdd("Browser", Element)
+#HotIf WinActive("ahk_group Browser")
+#Include browser.ahk
 
-;;
-#If Not WinActive("ahk_group Ignored")
-#Include, generic.ahk
+for Element in Ignored
+    GroupAdd("Ignored", Element)
+;#HotIf Not WinActive("ahk_group Ignored")
+;#Include generic.ahk

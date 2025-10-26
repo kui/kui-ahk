@@ -1,36 +1,36 @@
 ; Load by main.ahk
 
-IsCSpace = False
-IsCX = False
+IsCSpace := False
+IsCX := False
 
 EnableCSpace() {
-    global IsCSpace = True
-    ToolTip, Ctrl + Space,,, 10
+    global IsCSpace := True
+    ToolTip("Ctrl + Space",,, 10)
 }
 DisableCSpace() {
-    global IsCSpace = False
-    ToolTip,,,, 10
+    global IsCSpace := False
+    ToolTip(,,, 10)
 }
 EnableCX() {
-    global IsCX = True
-    ToolTip, Ctrl + X,,, 11
+    global IsCX := True
+    ToolTip("Ctrl + X",,, 11)
 }
 DisableCX() {
-    global IsCX = False
-    ToolTip,,,, 11
+    global IsCX := False
+    ToolTip(,,, 11)
 }
 
 MoveCarret(Keys) {
     global IsCSpace
     If (IsCSpace) {
-        Send, +%Keys%
+        Send("+" Keys)
     } Else {
-        Send, %Keys%
+        Send(Keys)
     }
 }
 EditText(Keys) {
     global IsCSpace
-    Send, % Keys
+    Send(Keys)
     If (IsCSpace) {
         DisableCSpace()
     }
@@ -50,74 +50,68 @@ EditText(Keys) {
 ^y::EditText("^v")
 ^w::EditText("^x")
 !w::EditText("^c")
-^k::
-    Send, {ShiftDown}{End}
-    Sleep, 100
-    Send, ^x
+^k:: {
+    Send("{ShiftDown}{End}")
+    Sleep(100)
+    Send("^x")
     DisableCSpace()
-    Return
+}
 ^h::EditText("{BackSpace}")
 ^d::EditText("{Delete}")
 
-^s::
-    Send, ^f
+^s:: {
+    Send("^f")
     DisableCSpace()
-    Return
-!k::
-    Send, ^w
+}
+!k:: {
+    Send("^w")
     DisableCSpace()
-    Return
+}
 
-^c::
+^c:: {
     If (IsCX) {
-        WinClose, A
+        WinClose("A")
         DisableCX()
     } Else {
-        Send, ^c
+        Send("^c")
     }
-    Return
-k::
+}
+k:: {
     If (IsCX) {
-        Send, ^w
+        Send("^w")
         DisableCX()
     } Else {
-        Send, k
+        Send("k")
     }
-    Return
-h::
+}
+h:: {
     If (IsCX) {
-        Send, ^a
+        Send("^a")
         DisableCX()
     } Else {
-        Send, h
+        Send("h")
     }
-    Return
+}
 
-^[::
-    Send, {Esc}
+^[:: {
+    Send("{Esc}")
     DisableCSpace()
-    Return
-^g::
-    HasAnyOperation = False
+}
+^g:: {
+    HasAnyOperation := False
     If (IsCSpace) {
         DisableCSpace()
-        HasAnyOperation = True
+        HasAnyOperation := True
     }
     If (IsCX) {
         DisableCX()
-        HasAnyOperation = True
+        HasAnyOperation := True
     }
     If (Not HasAnyOperation) {
-        Send, {Esc}
+        Send("{Esc}")
     }
-    Return
+}
 
 ^Space::EnableCSpace()
 ^x::EnableCX()
 
-Alt::
-    KeyWait, Alt
-    Return
-LAlt Up::
-    Send, {AltUp}
-    Return
