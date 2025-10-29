@@ -19,7 +19,7 @@ SetTimer(CheckAndUpdateImeStatus, 500)
 ; IME状態をチェックして更新
 CheckAndUpdateImeStatus() {
     global LastImeStatus
-    currentStatus := ImeGet()
+    local currentStatus := ImeGet()
 
     if (currentStatus != LastImeStatus) {
         LastImeStatus := currentStatus
@@ -29,16 +29,16 @@ CheckAndUpdateImeStatus() {
 
 ; 現在のIME状態を取得
 ImeGet(windowTitle := "A") {
-    hwnd := WinExist(windowTitle)
+    local hwnd := WinExist(windowTitle)
     if WinActive(windowTitle) {
-        ptrSize := A_PtrSize ? A_PtrSize : 4
-        cbSize := 4 + 4 + (ptrSize * 6) + 16
-        stGTI := Buffer(cbSize, 0)
+        local ptrSize := A_PtrSize ? A_PtrSize : 4
+        local cbSize := 4 + 4 + (ptrSize * 6) + 16
+        local stGTI := Buffer(cbSize, 0)
         NumPut("uint", cbSize, stGTI.Ptr, 0)
         hwnd := DllCall("GetGUIThreadInfo", "UInt", 0, "UInt", stGTI.Ptr)
             ? NumGet(stGTI.Ptr, 8 + ptrSize, "UInt") : hwnd
     }
-    result := DllCall("SendMessage",
+    local result := DllCall("SendMessage",
         "UInt", DllCall("imm32\ImmGetDefaultIMEWnd", "UInt", hwnd),
         "UInt", 0x0283, ;Message : WM_IME_CONTROL
         "Int", 0x005,   ;wParam  : IMC_GETOPENSTATUS
@@ -47,16 +47,16 @@ ImeGet(windowTitle := "A") {
 }
 
 ImeSet(status, windowTitle := "A") {
-    hwnd := WinExist(windowTitle)
+    local hwnd := WinExist(windowTitle)
     if WinActive(windowTitle) {
-        ptrSize := A_PtrSize ? A_PtrSize : 4
-        cbSize := 4 + 4 + (ptrSize * 6) + 16
-        stGTI := Buffer(cbSize, 0)
+        local ptrSize := A_PtrSize ? A_PtrSize : 4
+        local cbSize := 4 + 4 + (ptrSize * 6) + 16
+        local stGTI := Buffer(cbSize, 0)
         NumPut("uint", cbSize, stGTI.Ptr, 0)
         hwnd := DllCall("GetGUIThreadInfo", "UInt", 0, "UInt", stGTI.Ptr)
             ? NumGet(stGTI.Ptr, 8 + ptrSize, "UInt") : hwnd
     }
-    result := DllCall("SendMessage",
+    local result := DllCall("SendMessage",
         "UInt", DllCall("imm32\ImmGetDefaultIMEWnd", "UInt", hwnd),
         "UInt", 0x0283, ;Message : WM_IME_CONTROL
         "Int", 0x006,   ;wParam  : IMC_SETOPENSTATUS
@@ -87,6 +87,7 @@ ShowImeStatus(status) {
 
     loop monitorCount {
         local monitorIndex := A_Index
+        local monLeft, monTop, monRight, monBottom
         MonitorGetWorkArea(monitorIndex, &monLeft, &monTop, &monRight, &monBottom)
 
         ; 新しいGUI（中央表示用）を作成
@@ -99,6 +100,7 @@ ShowImeStatus(status) {
 
         ; GUIのサイズを取得するため一旦表示
         imeGui.Show("AutoSize Hide")
+        local guiWidth, guiHeight
         imeGui.GetPos(, , &guiWidth, &guiHeight)
 
         ; モニターの中央座標を計算
@@ -129,11 +131,13 @@ DestroyAllImeGui() {
 ; マウス座標からモニター番号を取得
 MonitorFromPoint(x, y) {
     global DebugMode
+    local debugMsg := ""
     if (DebugMode) {
         debugMsg := "Checking monitors for point (" . x . ", " . y . "):`n"
     }
 
     loop MonitorGetCount() {
+        local monLeft, monTop, monRight, monBottom
         MonitorGet(A_Index, &monLeft, &monTop, &monRight, &monBottom)
 
         if (DebugMode) {
@@ -195,14 +199,16 @@ UpdateMouseIndicatorStatus(status) {
 UpdateMouseIndicatorPosition() {
     try {
         if (IsSet(ImeMouseGui)) {
+            local mouseX, mouseY
             MouseGetPos(&mouseX, &mouseY)
             ; マウスカーソルがどのモニターにあるかを判定
-            monitorIndex := MonitorFromPoint(mouseX, mouseY)
+            local monitorIndex := MonitorFromPoint(mouseX, mouseY)
+            local monLeft, monTop, monRight, monBottom
             MonitorGet(monitorIndex, &monLeft, &monTop, &monRight, &monBottom)
 
             ; インジケーターの表示位置を計算（マウスから+20ピクセルオフセット）
-            indicatorX := mouseX + 20
-            indicatorY := mouseY + 20
+            local indicatorX := mouseX + 20
+            local indicatorY := mouseY + 20
 
             ; モニターの境界内に収める
             ; GUIのサイズを考慮（おおよそ幅50、高さ35）
