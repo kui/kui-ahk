@@ -70,18 +70,67 @@ ImeSet(status, windowTitle := "A") {
 ShowImeStatus(status) {
     ; 既存のGUIを破棄
     try {
-        ImeGui.Destroy()
+        if (IsSet(ImeGuiList)) {
+            for guiItem in ImeGuiList {
+                guiItem.Destroy()
+            }
+        }
     }
 
-    ; 新しいGUI（中央表示用）を作成
-    global ImeGui := Gui("+AlwaysOnTop -Caption +ToolWindow")
-    ImeGui.BackColor := status ? "0x4CAF50" : "0x2196F3"
-    ImeGui.SetFont("s48 bold cWhite", "メイリオ")
+    ; 各モニターにGUIを作成して表示
+    global ImeGuiList := []
+    local monitorCount := MonitorGetCount()
 
-    statusText := status ? "あ" : "_A"
-    ImeGui.Add("Text", "Center w120 h80", statusText)
-    ImeGui.Show("AutoSize Center NoActivate")
-    SetTimer(() => ImeGui.Destroy(), -1000)
+    loop monitorCount {
+        local monitorIndex := A_Index
+        MonitorGetWorkArea(monitorIndex, &monLeft, &monTop, &monRight, &monBottom)
+
+        ; 新しいGUI（中央表示用）を作成
+        local imeGui := Gui("+AlwaysOnTop -Caption +ToolWindow")
+        imeGui.BackColor := status ? "0x4CAF50" : "0x2196F3"
+        imeGui.SetFont("s48 bold cWhite", "メイリオ")
+
+        local statusText := status ? "あ" : "_A"
+        imeGui.Add("Text", "Center w120 h80", statusText)
+
+        ; GUIのサイズを取得するため一旦表示
+        imeGui.Show("AutoSize Hide")
+        imeGui.GetPos(, , &guiWidth, &guiHeight)
+
+        ; モニターの中央座標を計算
+        local centerX := monLeft + (monRight - monLeft - guiWidth) // 2
+        local centerY := monTop + (monBottom - monTop - guiHeight) // 2
+
+        imeGui.Show("x" . centerX . " y" . centerY . " NoActivate")
+        ImeGuiList.Push(imeGui)
+    }
+
+    ; 1秒後にすべてのGUIを破棄
+    SetTimer(() => DestroyAllImeGui(), -1000)
+}
+
+; すべてのIME GUIを破棄
+DestroyAllImeGui() {
+    global ImeGuiList
+    try {
+        if (IsSet(ImeGuiList)) {
+            for guiItem in ImeGuiList {
+                guiItem.Destroy()
+            }
+            ImeGuiList := []
+        }
+    }
+}
+
+; マウス座標からモニター番号を取得
+MonitorFromPoint(x, y) {
+    loop MonitorGetCount() {
+        MonitorGet(A_Index, &monLeft, &monTop, &monRight, &monBottom)
+        if (x >= monLeft && x < monRight && y >= monTop && y < monBottom) {
+            return A_Index
+        }
+    }
+    return 1  ; デフォルトはプライマリモニター
 }
 
 ; マウスカーソル近くのインジケーターをIME状態に応じて更新
@@ -101,7 +150,7 @@ UpdateMouseIndicatorStatus(status) {
         ImeMouseGui.Show("x" . (mouseX + 20) . " y" . (mouseY + 20) . " AutoSize NoActivate")
 
         ; マウス位置更新タイマーを開始
-        SetTimer(UpdateMouseIndicatorPosition, 50)
+        SetTimer(UpdateMouseIndicatorPosition, 30)
     } else {
         ; 英数モード: インジケーターを削除してタイマー停止
         try {
