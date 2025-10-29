@@ -3,6 +3,10 @@ DebugMode := False
 
 SetKeyDelay(0)
 
+; マウス座標をスクリーン全体の絶対座標で取得するように設定
+; デフォルトだとアクティブなモニターの相対座標になるため実装が複雑になる
+CoordMode("Mouse", "Screen")
+
 ; グローバル変数
 global LastImeStatus := -1
 
@@ -124,11 +128,36 @@ DestroyAllImeGui() {
 
 ; マウス座標からモニター番号を取得
 MonitorFromPoint(x, y) {
+    global DebugMode
+    if (DebugMode) {
+        debugMsg := "Checking monitors for point (" . x . ", " . y . "):`n"
+    }
+
     loop MonitorGetCount() {
         MonitorGet(A_Index, &monLeft, &monTop, &monRight, &monBottom)
+
+        if (DebugMode) {
+            debugMsg .= "Monitor " . A_Index . ": L=" . monLeft . " T=" . monTop . " R=" . monRight . " B=" . monBottom
+            if (x >= monLeft && x < monRight && y >= monTop && y < monBottom) {
+                debugMsg .= " [MATCH]`n"
+            } else {
+                debugMsg .= "`n"
+            }
+        }
+
         if (x >= monLeft && x < monRight && y >= monTop && y < monBottom) {
+            if (DebugMode) {
+                ToolTip(debugMsg)
+                SetTimer(() => ToolTip(), -3000)
+            }
             return A_Index
         }
+    }
+
+    if (DebugMode) {
+        debugMsg .= "No match found, returning 1"
+        ToolTip(debugMsg)
+        SetTimer(() => ToolTip(), -3000)
     }
     return 1  ; デフォルトはプライマリモニター
 }
@@ -146,8 +175,8 @@ UpdateMouseIndicatorStatus(status) {
         ImeMouseGui.SetFont("s20 bold cWhite", "メイリオ")
         ImeMouseGui.Add("Text", "Center w50 h35", "あ")
 
-        MouseGetPos(&mouseX, &mouseY)
-        ImeMouseGui.Show("x" . (mouseX + 20) . " y" . (mouseY + 20) . " AutoSize NoActivate")
+        ; 初期位置を設定してから表示
+        UpdateMouseIndicatorPosition()
 
         ; マウス位置更新タイマーを開始
         SetTimer(UpdateMouseIndicatorPosition, 30)
@@ -167,7 +196,26 @@ UpdateMouseIndicatorPosition() {
     try {
         if (IsSet(ImeMouseGui)) {
             MouseGetPos(&mouseX, &mouseY)
-            ImeMouseGui.Show("x" . (mouseX + 20) . " y" . (mouseY + 20) . " AutoSize NoActivate")
+            ; マウスカーソルがどのモニターにあるかを判定
+            monitorIndex := MonitorFromPoint(mouseX, mouseY)
+            MonitorGet(monitorIndex, &monLeft, &monTop, &monRight, &monBottom)
+
+            ; インジケーターの表示位置を計算（マウスから+20ピクセルオフセット）
+            indicatorX := mouseX + 20
+            indicatorY := mouseY + 20
+
+            ; モニターの境界内に収める
+            ; GUIのサイズを考慮（おおよそ幅50、高さ35）
+            if (indicatorX + 50 > monRight)
+                indicatorX := monRight - 50
+            if (indicatorY + 35 > monBottom)
+                indicatorY := monBottom - 35
+            if (indicatorX < monLeft)
+                indicatorX := monLeft
+            if (indicatorY < monTop)
+                indicatorY := monTop
+
+            ImeMouseGui.Show("x" . indicatorX . " y" . indicatorY . " AutoSize NoActivate")
         }
     }
 }
