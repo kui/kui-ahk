@@ -29,7 +29,7 @@ ShowImeStatus(status) {
         ImeGui.Destroy()
     }
 
-    ; 新しいGUIを作成
+    ; 新しいGUI（中央表示用）を作成
     global ImeGui := Gui("+AlwaysOnTop -Caption +ToolWindow")
     ImeGui.BackColor := status ? "0x4CAF50" : "0x2196F3"
     ImeGui.SetFont("s48 bold cWhite", "メイリオ")
@@ -38,6 +38,37 @@ ShowImeStatus(status) {
     ImeGui.Add("Text", "Center w120 h80", statusText)
     ImeGui.Show("AutoSize Center NoActivate")
     SetTimer(() => ImeGui.Destroy(), -1000)
+
+    ; 日本語入力モードの時のみマウスカーソル近くに小さく表示
+    if (status) {
+        try {
+            SetTimer(UpdateMouseIndicator, 0)
+        }
+        try {
+            ImeMouseGui.Destroy()
+        }
+
+        global ImeMouseGui := Gui("+AlwaysOnTop -Caption +ToolWindow")
+        ImeMouseGui.BackColor := "0x4CAF50"
+        ImeMouseGui.SetFont("s20 bold cWhite", "メイリオ")
+        ImeMouseGui.Add("Text", "Center w50 h35", "あ")
+        SetTimer(UpdateMouseIndicator, 50)
+    } else {
+        try {
+            SetTimer(UpdateMouseIndicator, 0)
+        }
+        try {
+            ImeMouseGui.Destroy()
+        }
+    }
+}
+
+; マウスカーソル近くのインジケーターを更新
+UpdateMouseIndicator() {
+    try {
+        MouseGetPos(&mouseX, &mouseY)
+        ImeMouseGui.Show("x" . (mouseX + 20) . " y" . (mouseY + 20) . " AutoSize NoActivate")
+    }
 }
 
 ; F18 Modifier Key Mappings
