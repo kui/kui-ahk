@@ -1,3 +1,9 @@
 {
-  "cSpell.words": ["SETOPENSTATUS"]
+  "cSpell.words": [
+    "GETOPENSTATUS",
+    "HSHELL",
+    "RUDEAPPACTIVATED",
+    "SETOPENSTATUS",
+    "WINDOWACTIVATED"
+  ]
 }

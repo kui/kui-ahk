@@ -3,6 +3,45 @@ DebugMode := False
 
 SetKeyDelay(0)
 
+; グローバル変数
+global LastImeStatus := -1
+
+; IME状態の定期チェック（500msごと）
+; Pollingではなくイベント駆動型が望ましいが、アクティブウィンドウの変更をフックして
+; さらにアクティブウィンドウ内でもIME制御ウィンドウを持つコンポーネントにフォーカスが当たってるか
+; 確認し、さらにその中でIMEの変化まで制御するとなるとかなり複雑になるため、ここでは簡易的にポーリングで実装する。
+SetTimer(CheckAndUpdateImeStatus, 500)
+
+; IME状態をチェックして更新
+CheckAndUpdateImeStatus() {
+    global LastImeStatus
+    currentStatus := ImeGet()
+
+    if (currentStatus != LastImeStatus) {
+        LastImeStatus := currentStatus
+        UpdateMouseIndicatorStatus(currentStatus)
+    }
+}
+
+; 現在のIME状態を取得
+ImeGet(windowTitle := "A") {
+    hwnd := WinExist(windowTitle)
+    if WinActive(windowTitle) {
+        ptrSize := A_PtrSize ? A_PtrSize : 4
+        cbSize := 4 + 4 + (ptrSize * 6) + 16
+        stGTI := Buffer(cbSize, 0)
+        NumPut("uint", cbSize, stGTI.Ptr, 0)
+        hwnd := DllCall("GetGUIThreadInfo", "UInt", 0, "UInt", stGTI.Ptr)
+            ? NumGet(stGTI.Ptr, 8 + ptrSize, "UInt") : hwnd
+    }
+    result := DllCall("SendMessage",
+        "UInt", DllCall("imm32\ImmGetDefaultIMEWnd", "UInt", hwnd),
+        "UInt", 0x0283, ;Message : WM_IME_CONTROL
+        "Int", 0x005,   ;wParam  : IMC_GETOPENSTATUS
+        "Int", 0)       ;lParam  : 0
+    return result
+}
+
 ImeSet(status, windowTitle := "A") {
     hwnd := WinExist(windowTitle)
     if WinActive(windowTitle) {
@@ -19,6 +58,11 @@ ImeSet(status, windowTitle := "A") {
         "Int", 0x006,   ;wParam  : IMC_SETOPENSTATUS
         "Int", status)  ;lParam  : 0 or 1
     ShowImeStatus(status)
+
+    ; マウスカーソル近くのインジケーターも更新
+    global LastImeStatus := status
+    UpdateMouseIndicatorStatus(status)
+
     return result
 }
 
@@ -38,12 +82,12 @@ ShowImeStatus(status) {
     ImeGui.Add("Text", "Center w120 h80", statusText)
     ImeGui.Show("AutoSize Center NoActivate")
     SetTimer(() => ImeGui.Destroy(), -1000)
+}
 
-    ; 日本語入力モードの時のみマウスカーソル近くに小さく表示
+; マウスカーソル近くのインジケーターをIME状態に応じて更新
+UpdateMouseIndicatorStatus(status) {
     if (status) {
-        try {
-            SetTimer(UpdateMouseIndicator, 0)
-        }
+        ; 日本語入力モード: インジケーターを表示してマウス追従開始
         try {
             ImeMouseGui.Destroy()
         }
@@ -52,22 +96,30 @@ ShowImeStatus(status) {
         ImeMouseGui.BackColor := "0x4CAF50"
         ImeMouseGui.SetFont("s20 bold cWhite", "メイリオ")
         ImeMouseGui.Add("Text", "Center w50 h35", "あ")
-        SetTimer(UpdateMouseIndicator, 50)
+
+        MouseGetPos(&mouseX, &mouseY)
+        ImeMouseGui.Show("x" . (mouseX + 20) . " y" . (mouseY + 20) . " AutoSize NoActivate")
+
+        ; マウス位置更新タイマーを開始
+        SetTimer(UpdateMouseIndicatorPosition, 50)
     } else {
-        try {
-            SetTimer(UpdateMouseIndicator, 0)
-        }
+        ; 英数モード: インジケーターを削除してタイマー停止
         try {
             ImeMouseGui.Destroy()
         }
+
+        ; マウス位置更新タイマーを停止
+        SetTimer(UpdateMouseIndicatorPosition, 0)
     }
 }
 
-; マウスカーソル近くのインジケーターを更新
-UpdateMouseIndicator() {
+; マウスカーソル近くのインジケーター位置だけを更新
+UpdateMouseIndicatorPosition() {
     try {
-        MouseGetPos(&mouseX, &mouseY)
-        ImeMouseGui.Show("x" . (mouseX + 20) . " y" . (mouseY + 20) . " AutoSize NoActivate")
+        if (IsSet(ImeMouseGui)) {
+            MouseGetPos(&mouseX, &mouseY)
+            ImeMouseGui.Show("x" . (mouseX + 20) . " y" . (mouseY + 20) . " AutoSize NoActivate")
+        }
     }
 }
 
