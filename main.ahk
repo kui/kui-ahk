@@ -1,6 +1,11 @@
 ;DebugMode := True
 DebugMode := False
 
+; DPI Awareness設定（高DPI環境でのスケーリング対応）
+; -4 = DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+; 各モニターのDPI設定に個別に対応し、システムとクライアント領域の両方でスケーリングを自動処理
+DllCall("SetThreadDpiAwarenessContext", "ptr", -4, "ptr")
+
 SetKeyDelay(0)
 
 ; マウス座標をスクリーン全体の絶対座標で取得するように設定
@@ -10,10 +15,13 @@ CoordMode("Mouse", "Screen")
 ; グローバル変数
 global LastImeStatus := -1
 
+; 定数
+global MOUSE_INDICATOR_OFFSET := 20
+
 ; IME状態の定期チェック（500msごと）
 ; Pollingではなくイベント駆動型が望ましいが、アクティブウィンドウの変更をフックして
-; さらにアクティブウィンドウ内でもIME制御ウィンドウを持つコンポーネントにフォーカスが当たってるか
-; 確認し、さらにその中でIMEの変化まで制御するとなるとかなり複雑になるため、ここでは簡易的にポーリングで実装する。
+; さらにアクティブウィンドウ内でもIME制御ウィンドウを持つコンポーネントにフォーカスが当たってるか確認し、
+; さらにその中でIMEの変化まで制御するとなるとかなり複雑になるため、ここでは簡易的にポーリングで実装する。
 SetTimer(CheckAndUpdateImeStatus, 500)
 
 ; IME状態をチェックして更新
@@ -206,20 +214,29 @@ UpdateMouseIndicatorPosition() {
             local monLeft, monTop, monRight, monBottom
             MonitorGet(monitorIndex, &monLeft, &monTop, &monRight, &monBottom)
 
-            ; インジケーターの表示位置を計算（マウスから+20ピクセルオフセット）
-            local indicatorX := mouseX + 20
-            local indicatorY := mouseY + 20
+            ; インジケーターの実際のサイズを取得
+            local guiWidth, guiHeight
+            ImeMouseGui.GetPos(, , &guiWidth, &guiHeight)
 
-            ; モニターの境界内に収める
-            ; GUIのサイズを考慮（おおよそ幅50、高さ35）
-            if (indicatorX + 50 > monRight)
-                indicatorX := monRight - 50
-            if (indicatorY + 35 > monBottom)
-                indicatorY := monBottom - 35
-            if (indicatorX < monLeft)
-                indicatorX := monLeft
-            if (indicatorY < monTop)
-                indicatorY := monTop
+            ; DPIスケーリングを取得して適用
+            ; 96 = 標準DPI (100%スケーリング)
+            ; A_ScreenDPI / 96 でスケール係数を計算 (例: 120/96=1.25 は 125%スケーリング)
+            local dpiScale := A_ScreenDPI / 96
+            guiWidth := guiWidth * dpiScale
+            guiHeight := guiHeight * dpiScale
+
+            ; 表示位置を決定
+            ; デフォルトは右下（マウスの右下）
+            local indicatorX := mouseX + MOUSE_INDICATOR_OFFSET
+            local indicatorY := mouseY + MOUSE_INDICATOR_OFFSET
+
+            ; 右端に近い場合は左側に表示
+            if (indicatorX + guiWidth > monRight)
+                indicatorX := mouseX - guiWidth - MOUSE_INDICATOR_OFFSET
+
+            ; 下端に近い場合は上側に表示
+            if (indicatorY + guiHeight > monBottom)
+                indicatorY := mouseY - guiHeight - MOUSE_INDICATOR_OFFSET
 
             ImeMouseGui.Show("x" . indicatorX . " y" . indicatorY . " AutoSize NoActivate")
         }
