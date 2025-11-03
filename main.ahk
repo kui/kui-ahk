@@ -18,10 +18,10 @@ global LastMouseX := 0
 global LastMouseY := 0
 global CurrentMouseX := 0
 global CurrentMouseY := 0
-global MouseMoveThreshold := 100  ; マウス移動の閾値（ピクセル）
 
 ; 定数
 global MOUSE_INDICATOR_OFFSET := 20
+global MOUSE_MOVE_THRESHOLD := 500  ; マウス移動の閾値（ピクセル）
 
 ; IME状態の定期チェックとマウス移動チェック（500msごと）
 ; Pollingではなくイベント駆動型が望ましいが、アクティブウィンドウの変更をフックして
@@ -31,7 +31,7 @@ SetTimer(CheckAndUpdateImeStatus, 500)
 
 ; IME状態をチェックして更新、およびマウス移動チェック
 CheckAndUpdateImeStatus() {
-    global LastImeStatus, LastMouseX, LastMouseY, CurrentMouseX, CurrentMouseY, MouseMoveThreshold
+    global LastImeStatus, LastMouseX, LastMouseY, CurrentMouseX, CurrentMouseY
     local currentStatus := ImeGet()
 
     ; 現在のマウス座標を更新（すべての機能で共有）
@@ -55,7 +55,7 @@ CheckAndUpdateImeStatus() {
         local distance := Sqrt(deltaX * deltaX + deltaY * deltaY)
 
         ; 閾値を超えた場合は英数モードに切り替え
-        if (distance > MouseMoveThreshold) {
+        if (distance > MOUSE_MOVE_THRESHOLD) {
             ImeSet(0)  ; 英数モードに切り替え
             ; 位置を更新（連続して切り替わることを防ぐ）
             LastMouseX := CurrentMouseX
@@ -89,6 +89,7 @@ ImeGet(windowTitle := "A") {
 }
 
 ImeSet(status, windowTitle := "A") {
+    global LastMouseX, LastMouseY
     local hwnd := WinExist(windowTitle)
     if WinActive(windowTitle) {
         local ptrSize := A_PtrSize ? A_PtrSize : 4
@@ -108,6 +109,8 @@ ImeSet(status, windowTitle := "A") {
     ; マウスカーソル近くのインジケーターも更新
     global LastImeStatus := status
     UpdateMouseIndicatorStatus(status)
+
+    MouseGetPos(&LastMouseX, &LastMouseY)
 
     return result
 }
