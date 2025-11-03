@@ -16,6 +16,8 @@ CoordMode("Mouse", "Screen")
 global LastImeStatus := -1
 global LastMouseX := 0
 global LastMouseY := 0
+global CurrentMouseX := 0
+global CurrentMouseY := 0
 global MouseMoveThreshold := 100  ; マウス移動の閾値（ピクセル）
 
 ; 定数
@@ -29,37 +31,41 @@ SetTimer(CheckAndUpdateImeStatus, 500)
 
 ; IME状態をチェックして更新、およびマウス移動チェック
 CheckAndUpdateImeStatus() {
-    global LastImeStatus, LastMouseX, LastMouseY, MouseMoveThreshold
+    global LastImeStatus, LastMouseX, LastMouseY, CurrentMouseX, CurrentMouseY, MouseMoveThreshold
     local currentStatus := ImeGet()
+
+    ; 現在のマウス座標を更新（すべての機能で共有）
+    MouseGetPos(&CurrentMouseX, &CurrentMouseY)
 
     ; IME状態の変更チェック
     if (currentStatus != LastImeStatus) {
         LastImeStatus := currentStatus
         UpdateMouseIndicatorStatus(currentStatus)
 
-        ; IMEが日本語入力モードになったときにマウス位置を記録
-        if (currentStatus) {
-            MouseGetPos(&LastMouseX, &LastMouseY)
-        }
+        ; IME状態変更時はマウス位置をリセット（英字切替判定用）
+        LastMouseX := CurrentMouseX
+        LastMouseY := CurrentMouseY
     }
 
     ; マウス移動チェック（日本語入力モード時のみ）
     if (LastImeStatus == 1) {
-        local currentX, currentY
-        MouseGetPos(&currentX, &currentY)
-
         ; マウス移動距離を計算（ユークリッド距離）
-        local deltaX := currentX - LastMouseX
-        local deltaY := currentY - LastMouseY
+        local deltaX := CurrentMouseX - LastMouseX
+        local deltaY := CurrentMouseY - LastMouseY
         local distance := Sqrt(deltaX * deltaX + deltaY * deltaY)
 
         ; 閾値を超えた場合は英数モードに切り替え
         if (distance > MouseMoveThreshold) {
             ImeSet(0)  ; 英数モードに切り替え
             ; 位置を更新（連続して切り替わることを防ぐ）
-            LastMouseX := currentX
-            LastMouseY := currentY
+            LastMouseX := CurrentMouseX
+            LastMouseY := CurrentMouseY
         }
+    }
+
+    ; インジケーター位置の更新（日本語入力モード時のみ）
+    if (LastImeStatus == 1) {
+        UpdateMouseIndicatorPosition()
     }
 }
 
@@ -104,6 +110,72 @@ ImeSet(status, windowTitle := "A") {
     UpdateMouseIndicatorStatus(status)
 
     return result
+}
+
+; マウスカーソル近くのインジケーターをIME状態に応じて更新
+UpdateMouseIndicatorStatus(status) {
+    if (status) {
+        ; 日本語入力モード: インジケーターを表示
+        try {
+            ImeMouseGui.Destroy()
+        }
+
+        global ImeMouseGui := Gui("+AlwaysOnTop -Caption +ToolWindow")
+        ImeMouseGui.BackColor := "0x4CAF50"
+        ImeMouseGui.SetFont("s20 bold cWhite", "メイリオ")
+        ImeMouseGui.Add("Text", "Center w50 h35", "あ")
+
+        ; 初期位置を設定してから表示
+        UpdateMouseIndicatorPosition()
+    } else {
+        ; 英数モード: インジケーターを削除
+        try {
+            ImeMouseGui.Destroy()
+        }
+    }
+}
+
+; マウスカーソル近くのインジケーター位置だけを更新
+UpdateMouseIndicatorPosition() {
+    global CurrentMouseX, CurrentMouseY
+    try {
+        if (IsSet(ImeMouseGui)) {
+            ; グローバルに管理されている現在のマウス座標を使用
+            local mouseX := CurrentMouseX
+            local mouseY := CurrentMouseY
+
+            ; マウスカーソルがどのモニターにあるかを判定
+            local monitorIndex := MonitorFromPoint(mouseX, mouseY)
+            local monLeft, monTop, monRight, monBottom
+            MonitorGet(monitorIndex, &monLeft, &monTop, &monRight, &monBottom)
+
+            ; インジケーターの実際のサイズを取得
+            local guiWidth, guiHeight
+            ImeMouseGui.GetPos(, , &guiWidth, &guiHeight)
+
+            ; DPIスケーリングを取得して適用
+            ; 96 = 標準DPI (100%スケーリング)
+            ; A_ScreenDPI / 96 でスケール係数を計算 (例: 120/96=1.25 は 125%スケーリング)
+            local dpiScale := A_ScreenDPI / 96
+            guiWidth := guiWidth * dpiScale
+            guiHeight := guiHeight * dpiScale
+
+            ; 表示位置を決定
+            ; デフォルトは右下（マウスの右下）
+            local indicatorX := mouseX + MOUSE_INDICATOR_OFFSET
+            local indicatorY := mouseY + MOUSE_INDICATOR_OFFSET
+
+            ; 右端に近い場合は左側に表示
+            if (indicatorX + guiWidth > monRight)
+                indicatorX := mouseX - guiWidth - MOUSE_INDICATOR_OFFSET
+
+            ; 下端に近い場合は上側に表示
+            if (indicatorY + guiHeight > monBottom)
+                indicatorY := mouseY - guiHeight - MOUSE_INDICATOR_OFFSET
+
+            ImeMouseGui.Show("x" . indicatorX . " y" . indicatorY . " AutoSize NoActivate")
+        }
+    }
 }
 
 ; IMEステータスを画面中央に表示
@@ -198,75 +270,6 @@ MonitorFromPoint(x, y) {
         SetTimer(() => ToolTip(), -3000)
     }
     return 1  ; デフォルトはプライマリモニター
-}
-
-; マウスカーソル近くのインジケーターをIME状態に応じて更新
-UpdateMouseIndicatorStatus(status) {
-    if (status) {
-        ; 日本語入力モード: インジケーターを表示してマウス追従開始
-        try {
-            ImeMouseGui.Destroy()
-        }
-
-        global ImeMouseGui := Gui("+AlwaysOnTop -Caption +ToolWindow")
-        ImeMouseGui.BackColor := "0x4CAF50"
-        ImeMouseGui.SetFont("s20 bold cWhite", "メイリオ")
-        ImeMouseGui.Add("Text", "Center w50 h35", "あ")
-
-        ; 初期位置を設定してから表示
-        UpdateMouseIndicatorPosition()
-
-        ; マウス位置更新タイマーを開始
-        SetTimer(UpdateMouseIndicatorPosition, 30)
-    } else {
-        ; 英数モード: インジケーターを削除してタイマー停止
-        try {
-            ImeMouseGui.Destroy()
-        }
-
-        ; マウス位置更新タイマーを停止
-        SetTimer(UpdateMouseIndicatorPosition, 0)
-    }
-}
-
-; マウスカーソル近くのインジケーター位置だけを更新
-UpdateMouseIndicatorPosition() {
-    try {
-        if (IsSet(ImeMouseGui)) {
-            local mouseX, mouseY
-            MouseGetPos(&mouseX, &mouseY)
-            ; マウスカーソルがどのモニターにあるかを判定
-            local monitorIndex := MonitorFromPoint(mouseX, mouseY)
-            local monLeft, monTop, monRight, monBottom
-            MonitorGet(monitorIndex, &monLeft, &monTop, &monRight, &monBottom)
-
-            ; インジケーターの実際のサイズを取得
-            local guiWidth, guiHeight
-            ImeMouseGui.GetPos(, , &guiWidth, &guiHeight)
-
-            ; DPIスケーリングを取得して適用
-            ; 96 = 標準DPI (100%スケーリング)
-            ; A_ScreenDPI / 96 でスケール係数を計算 (例: 120/96=1.25 は 125%スケーリング)
-            local dpiScale := A_ScreenDPI / 96
-            guiWidth := guiWidth * dpiScale
-            guiHeight := guiHeight * dpiScale
-
-            ; 表示位置を決定
-            ; デフォルトは右下（マウスの右下）
-            local indicatorX := mouseX + MOUSE_INDICATOR_OFFSET
-            local indicatorY := mouseY + MOUSE_INDICATOR_OFFSET
-
-            ; 右端に近い場合は左側に表示
-            if (indicatorX + guiWidth > monRight)
-                indicatorX := mouseX - guiWidth - MOUSE_INDICATOR_OFFSET
-
-            ; 下端に近い場合は上側に表示
-            if (indicatorY + guiHeight > monBottom)
-                indicatorY := mouseY - guiHeight - MOUSE_INDICATOR_OFFSET
-
-            ImeMouseGui.Show("x" . indicatorX . " y" . indicatorY . " AutoSize NoActivate")
-        }
-    }
 }
 
 ; F18 Modifier Key Mappings
