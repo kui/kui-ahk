@@ -14,24 +14,52 @@ CoordMode("Mouse", "Screen")
 
 ; グローバル変数
 global LastImeStatus := -1
+global LastMouseX := 0
+global LastMouseY := 0
+global MouseMoveThreshold := 100  ; マウス移動の閾値（ピクセル）
 
 ; 定数
 global MOUSE_INDICATOR_OFFSET := 20
 
-; IME状態の定期チェック（500msごと）
+; IME状態の定期チェックとマウス移動チェック（500msごと）
 ; Pollingではなくイベント駆動型が望ましいが、アクティブウィンドウの変更をフックして
 ; さらにアクティブウィンドウ内でもIME制御ウィンドウを持つコンポーネントにフォーカスが当たってるか確認し、
 ; さらにその中でIMEの変化まで制御するとなるとかなり複雑になるため、ここでは簡易的にポーリングで実装する。
 SetTimer(CheckAndUpdateImeStatus, 500)
 
-; IME状態をチェックして更新
+; IME状態をチェックして更新、およびマウス移動チェック
 CheckAndUpdateImeStatus() {
-    global LastImeStatus
+    global LastImeStatus, LastMouseX, LastMouseY, MouseMoveThreshold
     local currentStatus := ImeGet()
 
+    ; IME状態の変更チェック
     if (currentStatus != LastImeStatus) {
         LastImeStatus := currentStatus
         UpdateMouseIndicatorStatus(currentStatus)
+
+        ; IMEが日本語入力モードになったときにマウス位置を記録
+        if (currentStatus) {
+            MouseGetPos(&LastMouseX, &LastMouseY)
+        }
+    }
+
+    ; マウス移動チェック（日本語入力モード時のみ）
+    if (LastImeStatus == 1) {
+        local currentX, currentY
+        MouseGetPos(&currentX, &currentY)
+
+        ; マウス移動距離を計算（ユークリッド距離）
+        local deltaX := currentX - LastMouseX
+        local deltaY := currentY - LastMouseY
+        local distance := Sqrt(deltaX * deltaX + deltaY * deltaY)
+
+        ; 閾値を超えた場合は英数モードに切り替え
+        if (distance > MouseMoveThreshold) {
+            ImeSet(0)  ; 英数モードに切り替え
+            ; 位置を更新（連続して切り替わることを防ぐ）
+            LastMouseX := currentX
+            LastMouseY := currentY
+        }
     }
 }
 
@@ -91,9 +119,7 @@ ShowImeStatus(status) {
 
     ; 各モニターにGUIを作成して表示
     global ImeGuiList := []
-    local monitorCount := MonitorGetCount()
-
-    loop monitorCount {
+    loop MonitorGetCount() {
         local monitorIndex := A_Index
         local monLeft, monTop, monRight, monBottom
         MonitorGetWorkArea(monitorIndex, &monLeft, &monTop, &monRight, &monBottom)
