@@ -22,12 +22,19 @@ global CurrentMouseY := 0
 ; 定数
 global MOUSE_INDICATOR_OFFSET := 20
 global MOUSE_MOVE_THRESHOLD := 500  ; マウス移動の閾値（ピクセル）
+global MouseIndicatorSuppressed := false  ; タイピング時にインジケーターを非表示にするフラグ
 
 ; IME状態の定期チェックとマウス移動チェック（500msごと）
 ; Pollingではなくイベント駆動型が望ましいが、アクティブウィンドウの変更をフックして
 ; さらにアクティブウィンドウ内でもIME制御ウィンドウを持つコンポーネントにフォーカスが当たってるか確認し、
 ; さらにその中でIMEの変化まで制御するとなるとかなり複雑になるため、ここでは簡易的にポーリングで実装する。
 SetTimer(CheckAndUpdateImeStatus, 500)
+
+; キー入力検出（タイピング時にマウスインジケーターを非表示にする）
+global KeyInputHook := InputHook("V")
+KeyInputHook.KeyOpt("{All}", "N")
+KeyInputHook.OnKeyDown := HideMouseIndicatorOnKeyDown
+KeyInputHook.Start()
 
 ; IME状態をチェックして更新、およびマウス移動チェック
 CheckAndUpdateImeStatus() {
@@ -117,6 +124,7 @@ ImeSet(status, windowTitle := "A") {
 
 ; マウスカーソル近くのインジケーターをIME状態に応じて更新
 UpdateMouseIndicatorStatus(status) {
+    global MouseIndicatorSuppressed := false  ; IME状態変更時にリセット
     if (status) {
         ; 日本語入力モード: インジケーターを表示
         try {
@@ -140,7 +148,9 @@ UpdateMouseIndicatorStatus(status) {
 
 ; マウスカーソル近くのインジケーター位置だけを更新
 UpdateMouseIndicatorPosition() {
-    global CurrentMouseX, CurrentMouseY
+    global CurrentMouseX, CurrentMouseY, MouseIndicatorSuppressed
+    if (MouseIndicatorSuppressed)
+        return
     try {
         if (IsSet(ImeMouseGui)) {
             ; グローバルに管理されている現在のマウス座標を使用
@@ -177,6 +187,26 @@ UpdateMouseIndicatorPosition() {
                 indicatorY := mouseY - guiHeight - MOUSE_INDICATOR_OFFSET
 
             ImeMouseGui.Show("x" . indicatorX . " y" . indicatorY . " AutoSize NoActivate")
+        }
+    }
+}
+
+; キー入力時にマウスインジケーターを非表示にする
+HideMouseIndicatorOnKeyDown(ih, vk, sc) {
+    global MouseIndicatorSuppressed, LastImeStatus
+    ; 修飾キー単体では非表示にしない
+    if (vk >= 0x10 && vk <= 0x12)  ; Shift, Ctrl, Alt
+        return
+    if (vk == 0x5B || vk == 0x5C)  ; LWin, RWin
+        return
+    if (vk >= 0xA0 && vk <= 0xA5)  ; LShift, RShift, LCtrl, RCtrl, LAlt, RAlt
+        return
+    if (vk == 0x81)  ; F18（修飾キーとして使用）
+        return
+    if (LastImeStatus == 1 && !MouseIndicatorSuppressed) {
+        MouseIndicatorSuppressed := true
+        try {
+            ImeMouseGui.Destroy()
         }
     }
 }
