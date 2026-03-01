@@ -48,25 +48,23 @@ CheckAndUpdateImeStatus() {
         LastMouseY := CurrentMouseY
     }
 
-    ; マウス移動チェック（日本語入力モード時のみ）
+    ; 日本語入力モード時: マウス移動チェックとインジケーター更新
     if (LastImeStatus == 1) {
         ; マウス移動距離を計算（ユークリッド距離）
         local deltaX := CurrentMouseX - LastMouseX
         local deltaY := CurrentMouseY - LastMouseY
         local distance := Sqrt(deltaX * deltaX + deltaY * deltaY)
 
-        ; 閾値を超えた場合は英数モードに切り替え
         if (distance > MOUSE_MOVE_THRESHOLD) {
-            ImeSet(0)  ; 英数モードに切り替え
-            ; 位置を更新（連続して切り替わることを防ぐ）
+            ; 閾値を超えた場合は英数モードに切り替え
+            ; ImeSet() 内でインジケーターの破棄も行われる
+            ImeSet(0)
             LastMouseX := CurrentMouseX
             LastMouseY := CurrentMouseY
+        } else {
+            ; 日本語モード継続中: インジケーター位置を追従
+            UpdateMouseIndicatorPosition()
         }
-    }
-
-    ; インジケーター位置の更新（日本語入力モード時のみ）
-    if (LastImeStatus == 1) {
-        UpdateMouseIndicatorPosition()
     }
 }
 
