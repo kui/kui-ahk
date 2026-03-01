@@ -275,6 +275,8 @@ MonitorFromPoint(x, y) {
     return 1  ; デフォルトはプライマリモニター
 }
 
+*F18::return
+
 ; F18 Modifier Key Mappings
 #HotIf GetKeyState("F18", "P")
 
