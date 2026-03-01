@@ -79,23 +79,22 @@ CheckAndUpdateImeStatus() {
 GetImeHwnd(windowTitle := "A") {
     local hwnd := WinExist(windowTitle)
     if WinActive(windowTitle) {
-        local ptrSize := A_PtrSize ? A_PtrSize : 4
-        local cbSize := 4 + 4 + (ptrSize * 6) + 16
+        local cbSize := 4 + 4 + (A_PtrSize * 6) + 16
         local stGTI := Buffer(cbSize, 0)
         NumPut("uint", cbSize, stGTI.Ptr, 0)
-        hwnd := DllCall("GetGUIThreadInfo", "UInt", 0, "UInt", stGTI.Ptr)
-            ? NumGet(stGTI.Ptr, 8 + ptrSize, "UInt") : hwnd
+        hwnd := DllCall("GetGUIThreadInfo", "UInt", 0, "Ptr", stGTI.Ptr)
+            ? NumGet(stGTI.Ptr, 8 + A_PtrSize, "Ptr") : hwnd
     }
-    return DllCall("imm32\ImmGetDefaultIMEWnd", "UInt", hwnd)
+    return DllCall("imm32\ImmGetDefaultIMEWnd", "Ptr", hwnd, "Ptr")
 }
 
 ; 現在のIME状態を取得
 ImeGet(windowTitle := "A") {
     return DllCall("SendMessage",
-        "UInt", GetImeHwnd(windowTitle),
+        "Ptr", GetImeHwnd(windowTitle),
         "UInt", 0x0283, ;Message : WM_IME_CONTROL
-        "Int", 0x005,   ;wParam  : IMC_GETOPENSTATUS
-        "Int", 0)       ;lParam  : 0
+        "Ptr", 0x005,   ;wParam  : IMC_GETOPENSTATUS
+        "Ptr", 0)       ;lParam  : 0
 }
 
 ; IME状態を設定
@@ -103,10 +102,10 @@ ImeSet(status, windowTitle := "A") {
     global LastImeStatus, LastMouseX, LastMouseY
 
     local result := DllCall("SendMessage",
-        "UInt", GetImeHwnd(windowTitle),
+        "Ptr", GetImeHwnd(windowTitle),
         "UInt", 0x0283, ;Message : WM_IME_CONTROL
-        "Int", 0x006,   ;wParam  : IMC_SETOPENSTATUS
-        "Int", status)  ;lParam  : 0 or 1
+        "Ptr", 0x006,   ;wParam  : IMC_SETOPENSTATUS
+        "Ptr", status)  ;lParam  : 0 or 1
     ShowImeStatus(status)
 
     ; マウスカーソル近くのインジケーターも更新
