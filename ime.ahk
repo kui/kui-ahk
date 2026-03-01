@@ -12,11 +12,6 @@ global MouseIndicatorSuppressed := false  ; タイピング時にインジケー
 
 ; IME機能の初期化
 InitIme() {
-    ; DPI Awareness設定（高DPI環境でのスケーリング対応）
-    ; -4 = DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
-    ; 各モニターのDPI設定に個別に対応し、システムとクライアント領域の両方でスケーリングを自動処理
-    DllCall("SetThreadDpiAwarenessContext", "ptr", -4, "ptr")
-
     ; マウス座標をスクリーン全体の絶対座標で取得するように設定
     ; デフォルトだとアクティブなモニターの相対座標になるため実装が複雑になる
     CoordMode("Mouse", "Screen")
@@ -160,13 +155,6 @@ UpdateMouseIndicatorPosition() {
             ; インジケーターの実際のサイズを取得
             local guiWidth, guiHeight
             ImeMouseGui.GetPos(, , &guiWidth, &guiHeight)
-
-            ; DPIスケーリングを取得して適用
-            ; 96 = 標準DPI (100%スケーリング)
-            ; A_ScreenDPI / 96 でスケール係数を計算 (例: 120/96=1.25 は 125%スケーリング)
-            local dpiScale := A_ScreenDPI / 96
-            guiWidth := guiWidth * dpiScale
-            guiHeight := guiHeight * dpiScale
 
             ; 表示位置を決定
             ; デフォルトは右下（マウスの右下）
