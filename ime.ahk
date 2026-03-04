@@ -8,6 +8,7 @@ global CurrentMouseY := 0
 ; 定数
 global MOUSE_INDICATOR_OFFSET := 20
 global MOUSE_MOVE_THRESHOLD := 500  ; マウス移動の閾値（ピクセル）
+global MOUSE_INDICATOR_RESTORE_DELAY := -3000  ; タイピング停止後にインジケーターを復活させるまでの時間（ミリ秒、負値で1回だけ実行）
 global MouseIndicatorSuppressed := false  ; タイピング時にインジケーターを非表示にするフラグ
 
 ; IME機能の初期化
@@ -184,11 +185,23 @@ HideMouseIndicatorOnKeyDown(ih, vk, sc) {
         return
     if (vk == 0x81)  ; F18（修飾キーとして使用）
         return
-    if (LastImeStatus == 1 && !MouseIndicatorSuppressed) {
-        MouseIndicatorSuppressed := true
-        try {
-            ImeMouseGui.Destroy()
+    if (LastImeStatus == 1) {
+        if (!MouseIndicatorSuppressed) {
+            MouseIndicatorSuppressed := true
+            try {
+                ImeMouseGui.Destroy()
+            }
         }
+        ; タイピング停止後に復活するタイマーを設定（キー入力のたびにリセット）
+        SetTimer(RestoreMouseIndicator, MOUSE_INDICATOR_RESTORE_DELAY)
+    }
+}
+
+; タイピング停止後にマウスインジケーターを復活させる
+RestoreMouseIndicator() {
+    global MouseIndicatorSuppressed, LastImeStatus
+    if (MouseIndicatorSuppressed && LastImeStatus == 1) {
+        UpdateMouseIndicatorStatus(1)
     }
 }
 
