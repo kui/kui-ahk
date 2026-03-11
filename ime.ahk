@@ -82,21 +82,18 @@ GetImeHwnd(windowTitle := "A") {
     return DllCall("imm32\ImmGetDefaultIMEWnd", "Ptr", hwnd, "Ptr")
 }
 
-; 現在のIME状態を取得（0: 英数, 1: 日本語）
+; 現在のIME状態を取得
 ImeGet(windowTitle := "A") {
-    local result := DllCall("SendMessage",
+    return DllCall("SendMessage",
         "Ptr", GetImeHwnd(windowTitle),
         "UInt", 0x0283, ;Message : WM_IME_CONTROL
         "Ptr", 0x005,   ;wParam  : IMC_GETOPENSTATUS
         "Ptr", 0)       ;lParam  : 0
-    return result ? 1 : 0
 }
 
 ; IME状態を設定
 ImeSet(status, windowTitle := "A") {
-    global LastImeStatus, LastMouseX, LastMouseY, MouseIndicatorSuppressed
-
-    MouseIndicatorSuppressed := false  ; 明示的なIME切替時にタイピング抑制をリセット
+    global LastImeStatus, LastMouseX, LastMouseY
 
     local result := DllCall("SendMessage",
         "Ptr", GetImeHwnd(windowTitle),
@@ -116,9 +113,9 @@ ImeSet(status, windowTitle := "A") {
 
 ; マウスカーソル近くのインジケーターをIME状態に応じて更新
 UpdateMouseIndicatorStatus(status) {
-    global MouseIndicatorSuppressed
-    if (status && !MouseIndicatorSuppressed) {
-        ; 日本語入力モード（タイピング抑制中でない場合）: インジケーターを表示
+    global MouseIndicatorSuppressed := false  ; IME状態変更時にリセット
+    if (status) {
+        ; 日本語入力モード: インジケーターを表示
         try {
             ImeMouseGui.Destroy()
         }
@@ -131,7 +128,7 @@ UpdateMouseIndicatorStatus(status) {
         ; 初期位置を設定してから表示
         UpdateMouseIndicatorPosition()
     } else {
-        ; 英数モードまたはタイピング抑制中: インジケーターを削除
+        ; 英数モード: インジケーターを削除
         try {
             ImeMouseGui.Destroy()
         }
