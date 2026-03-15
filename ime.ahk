@@ -41,6 +41,7 @@ CheckAndUpdateImeStatus() {
 
     ; IME状態の変更チェック
     if (currentStatus != LastImeStatus) {
+        MouseIndicatorSuppressed := false  ; IME状態が外部で変わったらタイピング抑制をリセット
         LastImeStatus := currentStatus
         UpdateMouseIndicatorStatus(currentStatus)
 
@@ -204,6 +205,7 @@ HideMouseIndicatorOnKeyDown(ih, vk, sc) {
 RestoreMouseIndicator() {
     global MouseIndicatorSuppressed, LastImeStatus
     if (MouseIndicatorSuppressed && LastImeStatus == 1) {
+        MouseIndicatorSuppressed := false
         UpdateMouseIndicatorStatus(1)
     }
 }
