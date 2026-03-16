@@ -34,12 +34,6 @@ InitIme() {
 CheckAndUpdateImeStatus() {
     global LastImeStatus, LastMouseX, LastMouseY, CurrentMouseX, CurrentMouseY
 
-    ; InputHookが停止していたら再起動（バッファ蓄積等による停止を防ぐ）
-    if (KeyInputHook.EndReason != "") {
-        OutputDebug("InputHook stopped: EndReason=" . KeyInputHook.EndReason . " Input=" . KeyInputHook.Input . " InProgress=" . KeyInputHook.InProgress)
-        KeyInputHook.Start()
-    }
-
     local currentStatus := ImeGet()
 
     ; 現在のマウス座標を更新（すべての機能で共有）
