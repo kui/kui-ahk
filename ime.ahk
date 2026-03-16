@@ -19,7 +19,7 @@ InitIme() {
 
     ; キー入力検出（タイピング時にマウスインジケーターを非表示にする）
     global KeyInputHook := InputHook("V")
-    KeyInputHook.KeyOpt("{All}", "N")
+    KeyInputHook.KeyOpt("{All}", "NI")
     KeyInputHook.OnKeyDown := HideMouseIndicatorOnKeyDown
     KeyInputHook.Start()
 
@@ -33,6 +33,12 @@ InitIme() {
 ; IME状態をチェックして更新、およびマウス移動チェック
 CheckAndUpdateImeStatus() {
     global LastImeStatus, LastMouseX, LastMouseY, CurrentMouseX, CurrentMouseY
+
+    ; InputHookが停止していたら再起動（バッファ蓄積等による停止を防ぐ）
+    if (KeyInputHook.EndReason != "") {
+        OutputDebug("InputHook stopped: EndReason=" . KeyInputHook.EndReason . " Input=" . KeyInputHook.Input . " InProgress=" . KeyInputHook.InProgress)
+        KeyInputHook.Start()
+    }
 
     local currentStatus := ImeGet()
 
