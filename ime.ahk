@@ -4,6 +4,7 @@ global LastMouseX := 0
 global LastMouseY := 0
 global CurrentMouseX := 0
 global CurrentMouseY := 0
+global ImeMouseGui
 
 ; 定数
 global MOUSE_INDICATOR_OFFSET := 20
@@ -113,6 +114,7 @@ ImeSet(status, windowTitle := "A") {
 
 ; マウスカーソル近くのインジケーターをIME状態に応じて更新
 UpdateMouseIndicatorStatus(status) {
+    global ImeMouseGui
     global MouseIndicatorSuppressed := false  ; IME状態変更時にリセット
     if (status) {
         ; 日本語入力モード: インジケーターを表示
@@ -120,7 +122,7 @@ UpdateMouseIndicatorStatus(status) {
             ImeMouseGui.Destroy()
         }
 
-        global ImeMouseGui := Gui("+AlwaysOnTop -Caption +ToolWindow")
+        ImeMouseGui := Gui("+AlwaysOnTop -Caption +ToolWindow")
         ImeMouseGui.BackColor := "0x4CAF50"
         ImeMouseGui.SetFont("s20 bold cWhite", "メイリオ")
         ImeMouseGui.Add("Text", "Center w50 h35", "あ")
@@ -137,7 +139,7 @@ UpdateMouseIndicatorStatus(status) {
 
 ; マウスカーソル近くのインジケーター位置だけを更新
 UpdateMouseIndicatorPosition() {
-    global CurrentMouseX, CurrentMouseY, MouseIndicatorSuppressed
+    global CurrentMouseX, CurrentMouseY, MouseIndicatorSuppressed, ImeMouseGui
     if (MouseIndicatorSuppressed)
         return
     try {
@@ -175,7 +177,7 @@ UpdateMouseIndicatorPosition() {
 
 ; キー入力時にマウスインジケーターを非表示にする
 HideMouseIndicatorOnKeyDown(ih, vk, sc) {
-    global MouseIndicatorSuppressed, LastImeStatus
+    global MouseIndicatorSuppressed, LastImeStatus, ImeMouseGui
     ; 修飾キー単体では非表示にしない
     if (vk >= 0x10 && vk <= 0x12)  ; Shift, Ctrl, Alt
         return
