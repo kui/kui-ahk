@@ -4,6 +4,7 @@ global LastMouseX := 0
 global LastMouseY := 0
 global CurrentMouseX := 0
 global CurrentMouseY := 0
+global ImeMouseGui
 
 ; 定数
 global MOUSE_INDICATOR_OFFSET := 20
@@ -83,21 +84,18 @@ GetImeHwnd(windowTitle := "A") {
     return DllCall("imm32\ImmGetDefaultIMEWnd", "Ptr", hwnd, "Ptr")
 }
 
-; 現在のIME状態を取得（0: 英数, 1: 日本語）
+; 現在のIME状態を取得
 ImeGet(windowTitle := "A") {
-    local result := DllCall("SendMessage",
+    return DllCall("SendMessage",
         "Ptr", GetImeHwnd(windowTitle),
         "UInt", 0x0283, ;Message : WM_IME_CONTROL
         "Ptr", 0x005,   ;wParam  : IMC_GETOPENSTATUS
         "Ptr", 0)       ;lParam  : 0
-    return result ? 1 : 0
 }
 
 ; IME状態を設定
 ImeSet(status, windowTitle := "A") {
-    global LastImeStatus, LastMouseX, LastMouseY, MouseIndicatorSuppressed
-
-    MouseIndicatorSuppressed := false  ; 明示的なIME切替時にタイピング抑制をリセット
+    global LastImeStatus, LastMouseX, LastMouseY
 
     local result := DllCall("SendMessage",
         "Ptr", GetImeHwnd(windowTitle),
@@ -117,14 +115,15 @@ ImeSet(status, windowTitle := "A") {
 
 ; マウスカーソル近くのインジケーターをIME状態に応じて更新
 UpdateMouseIndicatorStatus(status) {
-    global MouseIndicatorSuppressed
-    if (status && !MouseIndicatorSuppressed) {
-        ; 日本語入力モード（タイピング抑制中でない場合）: インジケーターを表示
+    global ImeMouseGui
+    global MouseIndicatorSuppressed := false  ; IME状態変更時にリセット
+    if (status) {
+        ; 日本語入力モード: インジケーターを表示
         try {
             ImeMouseGui.Destroy()
         }
 
-        global ImeMouseGui := Gui("+AlwaysOnTop -Caption +ToolWindow")
+        ImeMouseGui := Gui("+AlwaysOnTop -Caption +ToolWindow")
         ImeMouseGui.BackColor := "0x4CAF50"
         ImeMouseGui.SetFont("s20 bold cWhite", "メイリオ")
         ImeMouseGui.Add("Text", "Center w50 h35", "あ")
@@ -132,7 +131,7 @@ UpdateMouseIndicatorStatus(status) {
         ; 初期位置を設定してから表示
         UpdateMouseIndicatorPosition()
     } else {
-        ; 英数モードまたはタイピング抑制中: インジケーターを削除
+        ; 英数モード: インジケーターを削除
         try {
             ImeMouseGui.Destroy()
         }
@@ -141,7 +140,7 @@ UpdateMouseIndicatorStatus(status) {
 
 ; マウスカーソル近くのインジケーター位置だけを更新
 UpdateMouseIndicatorPosition() {
-    global CurrentMouseX, CurrentMouseY, MouseIndicatorSuppressed
+    global CurrentMouseX, CurrentMouseY, MouseIndicatorSuppressed, ImeMouseGui
     if (MouseIndicatorSuppressed)
         return
     try {
@@ -179,7 +178,7 @@ UpdateMouseIndicatorPosition() {
 
 ; キー入力時にマウスインジケーターを非表示にする
 HideMouseIndicatorOnKeyDown(ih, vk, sc) {
-    global MouseIndicatorSuppressed, LastImeStatus
+    global MouseIndicatorSuppressed, LastImeStatus, ImeMouseGui
     ; 修飾キー単体では非表示にしない
     if (vk >= 0x10 && vk <= 0x12)  ; Shift, Ctrl, Alt
         return
@@ -268,7 +267,6 @@ DestroyAllImeGui() {
 
 ; マウス座標からモニター番号を取得
 MonitorFromPoint(x, y) {
-    global DebugMode
     local debugMsg := ""
     if (DebugMode) {
         debugMsg := "Checking monitors for point (" . x . ", " . y . "):`n"
