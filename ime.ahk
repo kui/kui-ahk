@@ -265,7 +265,6 @@ DestroyAllImeGui() {
 
 ; マウス座標からモニター番号を取得
 MonitorFromPoint(x, y) {
-    global DebugMode
     local debugMsg := ""
     if (DebugMode) {
         debugMsg := "Checking monitors for point (" . x . ", " . y . "):`n"
