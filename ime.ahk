@@ -10,6 +10,7 @@ global ImeMouseGui
 global MOUSE_INDICATOR_OFFSET := 20
 global MOUSE_MOVE_THRESHOLD := 500  ; マウス移動の閾値（ピクセル）
 global IME_CONTROL_TIMEOUT := 200  ; IME制御メッセージの応答待ち上限（ミリ秒）
+global IME_KEY_SWITCH_TIMEOUT := 150  ; IMEオン/オフキー送信後、切り替わりを待つ上限（ミリ秒）
 global MOUSE_INDICATOR_RESTORE_DELAY := -3000  ; タイピング停止後にインジケーターを復活させるまでの時間（ミリ秒、負値で1回だけ実行）
 global MouseIndicatorSuppressed := false  ; タイピング時にインジケーターを非表示にするフラグ
 
@@ -112,7 +113,12 @@ ImeGet(windowTitle := "A") {
 ImeSet(status, windowTitle := "A") {
     global LastImeStatus, LastMouseX, LastMouseY
 
-    local result := SendImeControl(windowTitle, 0x006, status)  ;IMC_SETOPENSTATUS
+    ; まずIMEオン/オフキーで切り替える。キー経由だとIME自身が切り替えを処理するため、
+    ; Copilot Keyboard などのキャレット横のモード表示が出る（IMC_SETOPENSTATUS では出ない）。
+    ; キーで切り替わらなかった場合（非対応のIME等）は従来どおり IMC_SETOPENSTATUS で設定する。
+    local result := ""
+    if (!SwitchImeByKey(status, windowTitle))
+        result := SendImeControl(windowTitle, 0x006, status)  ;IMC_SETOPENSTATUS
     ShowImeStatus(status)
 
     ; マウスカーソル近くのインジケーターも更新
@@ -122,6 +128,19 @@ ImeSet(status, windowTitle := "A") {
     MouseGetPos(&LastMouseX, &LastMouseY)
 
     return result
+}
+
+; IMEオン/オフキー（VK_IME_ON / VK_IME_OFF）を送信し、指定の状態になったかを返す
+SwitchImeByKey(status, windowTitle := "A") {
+    Send(status ? "{vk16}" : "{vk1A}")  ; VK_IME_ON : VK_IME_OFF
+    local deadline := A_TickCount + IME_KEY_SWITCH_TIMEOUT
+    loop {
+        if (ImeGet(windowTitle) == status)
+            return true
+        if (A_TickCount >= deadline)
+            return false
+        Sleep(10)
+    }
 }
 
 ; マウスカーソル近くのインジケーターをIME状態に応じて更新
@@ -198,6 +217,8 @@ HideMouseIndicatorOnKeyDown(ih, vk, sc) {
     if (vk >= 0xA0 && vk <= 0xA5)  ; LShift, RShift, LCtrl, RCtrl, LAlt, RAlt
         return
     if (vk == 0x81)  ; F18（修飾キーとして使用）
+        return
+    if (vk == 0x16 || vk == 0x1A)  ; VK_IME_ON, VK_IME_OFF（ImeSet() が送信する）
         return
     if (LastImeStatus == 1) {
         if (!MouseIndicatorSuppressed) {
