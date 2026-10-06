@@ -3,6 +3,10 @@ DebugMode := False
 
 SetKeyDelay(0)
 
+; SendInput は送信中にキーボードフックを一時的に外すが、#HotIf の評価待ちと競合すると
+; フックが戻らなくなり F18 コンビネーションが全滅することがあるため、フックを外さない Event を使う
+SendMode("Event")
+
 #Include "ime.ahk"
 InitIme()
 

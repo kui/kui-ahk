@@ -9,6 +9,7 @@ global ImeMouseGui
 ; 定数
 global MOUSE_INDICATOR_OFFSET := 20
 global MOUSE_MOVE_THRESHOLD := 500  ; マウス移動の閾値（ピクセル）
+global IME_CONTROL_TIMEOUT := 200  ; IME制御メッセージの応答待ち上限（ミリ秒）
 global MOUSE_INDICATOR_RESTORE_DELAY := -3000  ; タイピング停止後にインジケーターを復活させるまでの時間（ミリ秒、負値で1回だけ実行）
 global MouseIndicatorSuppressed := false  ; タイピング時にインジケーターを非表示にするフラグ
 
@@ -36,6 +37,8 @@ CheckAndUpdateImeStatus() {
     global LastImeStatus, LastMouseX, LastMouseY, CurrentMouseX, CurrentMouseY
 
     local currentStatus := ImeGet()
+    if (currentStatus == "")  ; IME状態を取得できなかった（相手が応答しない等）ので今回は判定しない
+        return
 
     ; 現在のマウス座標を更新（すべての機能で共有）
     MouseGetPos(&CurrentMouseX, &CurrentMouseY)
@@ -84,24 +87,32 @@ GetImeHwnd(windowTitle := "A") {
     return DllCall("imm32\ImmGetDefaultIMEWnd", "Ptr", hwnd, "Ptr")
 }
 
-; 現在のIME状態を取得
-ImeGet(windowTitle := "A") {
-    return DllCall("SendMessage",
+; WM_IME_CONTROL をタイムアウト付きで送信する（失敗・タイムアウト時は "" を返す）
+; 相手のアプリが固まっていると SendMessage はメインスレッドを止め、#HotIf の評価も止めてしまうため
+SendImeControl(windowTitle, wParam, lParam) {
+    local result := 0
+    local ok := DllCall("SendMessageTimeout",
         "Ptr", GetImeHwnd(windowTitle),
-        "UInt", 0x0283, ;Message : WM_IME_CONTROL
-        "Ptr", 0x005,   ;wParam  : IMC_GETOPENSTATUS
-        "Ptr", 0)       ;lParam  : 0
+        "UInt", 0x0283,  ;Message : WM_IME_CONTROL
+        "Ptr", wParam,
+        "Ptr", lParam,
+        "UInt", 0x0002,  ;SMTO_ABORTIFHUNG
+        "UInt", IME_CONTROL_TIMEOUT,
+        "Ptr*", &result,
+        "Ptr")
+    return ok ? result : ""
+}
+
+; 現在のIME状態を取得（取得できなかった場合は "" を返す）
+ImeGet(windowTitle := "A") {
+    return SendImeControl(windowTitle, 0x005, 0)  ;IMC_GETOPENSTATUS
 }
 
 ; IME状態を設定
 ImeSet(status, windowTitle := "A") {
     global LastImeStatus, LastMouseX, LastMouseY
 
-    local result := DllCall("SendMessage",
-        "Ptr", GetImeHwnd(windowTitle),
-        "UInt", 0x0283, ;Message : WM_IME_CONTROL
-        "Ptr", 0x006,   ;wParam  : IMC_SETOPENSTATUS
-        "Ptr", status)  ;lParam  : 0 or 1
+    local result := SendImeControl(windowTitle, 0x006, status)  ;IMC_SETOPENSTATUS
     ShowImeStatus(status)
 
     ; マウスカーソル近くのインジケーターも更新
