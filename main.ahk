@@ -37,6 +37,12 @@ d:: Send "{Delete}"
 !j:: Send "^{End}"  ; 最下部へジャンプ
 !k:: Send "^{Home}" ; 最上部へジャンプ
 
+; Shift + キャレット移動（選択範囲の伸縮）
++h:: Send "+{Left}"
++j:: Send "+{Down}"
++k:: Send "+{Up}"
++l:: Send "+{Right}"
+
 ; 選択
 a:: Send "+{Home}"  ; キャレット左から行頭までを選択
 f:: Send "+{End}"   ; キャレット右から行末までを選択
