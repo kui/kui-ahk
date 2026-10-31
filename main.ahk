@@ -43,6 +43,18 @@ d:: Send "{Delete}"
 +k:: Send "+{Up}"
 +l:: Send "+{Right}"
 
+; Shift + Ctrl + キャレット移動（選択範囲の伸縮）
++^h:: Send "+^{Left}"  ; 単語単位で左へ選択
++^l:: Send "+^{Right}" ; 単語単位で右へ選択
++^j:: Send "+{PgDn}"   ; ページ単位で下へ選択
++^k:: Send "+{PgUp}"   ; ページ単位で上へ選択
+
+; Shift + Alt + キャレット移動（選択範囲の伸縮）
++!h:: Send "+{Home}"   ; 行頭まで選択
++!l:: Send "+{End}"    ; 行末まで選択
++!j:: Send "+^{End}"   ; 最下部まで選択
++!k:: Send "+^{Home}"  ; 最上部まで選択
+
 ; 選択
 a:: Send "+{Home}"  ; キャレット左から行頭までを選択
 f:: Send "+{End}"   ; キャレット右から行末までを選択
